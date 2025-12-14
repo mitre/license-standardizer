@@ -28,7 +28,7 @@ from typing import Dict, List, Optional, Tuple
 
 # Template paths
 SCRIPT_DIR = Path(__file__).parent
-TEMPLATES_DIR = SCRIPT_DIR.parent / "research"
+TEMPLATES_DIR = SCRIPT_DIR / "templates"
 TEMPLATE_CIS = TEMPLATES_DIR / "LICENSE_TEMPLATE_CIS.md"
 TEMPLATE_DISA = TEMPLATES_DIR / "LICENSE_TEMPLATE_DISA.md"
 TEMPLATE_PLAIN = TEMPLATES_DIR / "LICENSE_TEMPLATE_PLAIN.md"
