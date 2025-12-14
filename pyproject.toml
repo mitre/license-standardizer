@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mitre-license-standardizer"
+version = "1.0.0"
+description = "Automated LICENSE file standardization for MITRE repositories"
+authors = [
+    {name = "MITRE SAF Team", email = "saf@mitre.org"}
+]
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "Apache-2.0"}
+keywords = ["license", "mitre", "automation", "github"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/mitre/license-standardizer"
+Repository = "https://github.com/mitre/license-standardizer"
+Issues = "https://github.com/mitre/license-standardizer/issues"
+
+[project.scripts]
+standardize-licenses = "standardize_licenses:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py37"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "T20"]
+ignore = ["E501"]  # Line too long (handled by formatter)
+
+[tool.black]
+line-length = 100
+target-version = ["py37", "py38", "py39", "py310", "py311", "py312"]

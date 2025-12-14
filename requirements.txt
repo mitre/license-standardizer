@@ -1,0 +1,2 @@
+# No runtime dependencies - uses gh CLI and stdlib only
+# All dependencies are handled by subprocess calls to gh

@@ -1,0 +1,186 @@
+"""Functional tests for end-to-end license standardization."""
+
+import json
+import subprocess
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
+# Import after ensuring parent dir in path
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from standardize_licenses import LicenseStandardizer
+
+
+@pytest.fixture
+def mock_gh_api():
+    """Mock gh api calls."""
+    with patch('subprocess.run') as mock_run:
+        yield mock_run
+
+
+class TestLicenseStandardizerFunctional:
+    """Functional tests for LicenseStandardizer class."""
+
+    def test_fork_detection_skips_repo(self, mock_gh_api):
+        """Test that forked repos are skipped."""
+        # Mock get_repo_metadata to return fork=true
+        mock_gh_api.return_value = Mock(
+            returncode=0,
+            stdout='{"fork": true, "archived": false, "default_branch": "main"}'
+        )
+
+        standardizer = LicenseStandardizer(dry_run=True)
+        result = standardizer.process_repo("some-fork")
+
+        assert result["status"] == "skipped"
+        assert result["action"] == "fork"
+        assert standardizer.stats["forks"] == 1
+
+    def test_archived_repo_skipped_when_flag_set(self, mock_gh_api):
+        """Test that archived repos are skipped when --skip-archived."""
+        # Mock get_repo_metadata to return archived=true
+        mock_gh_api.return_value = Mock(
+            returncode=0,
+            stdout='{"fork": false, "archived": true, "default_branch": "main"}'
+        )
+
+        standardizer = LicenseStandardizer(dry_run=True, skip_archived=True)
+        result = standardizer.process_repo("archived-repo")
+
+        assert result["status"] == "skipped"
+        assert result["action"] == "archived"
+        assert standardizer.stats["archived"] == 1
+
+    def test_archived_repo_processed_without_flag(self, mock_gh_api):
+        """Test that archived repos are processed when flag not set."""
+        # First call: metadata (archived)
+        # Second call: check LICENSE file (exists)
+        # Third call: get content
+        mock_gh_api.side_effect = [
+            Mock(returncode=0, stdout='{"fork": false, "archived": true, "default_branch": "main"}'),
+            Mock(returncode=0, stdout='{"sha": "abc123", "content": "base64content"}'),
+            Mock(returncode=0, stdout='"TGljZW5zZSBjb250ZW50"'),  # "License content" in base64
+        ]
+
+        standardizer = LicenseStandardizer(dry_run=True, skip_archived=False)
+        result = standardizer.process_repo("archived-repo")
+
+        assert result["status"] == "success"
+
+    def test_skip_template_type(self, mock_gh_api):
+        """Test that --skip cis skips CIS repos."""
+        # Mock metadata, license check, and content
+        mock_gh_api.side_effect = [
+            Mock(returncode=0, stdout='{"fork": false, "archived": false, "default_branch": "main"}'),
+            Mock(returncode=0, stdout='{"sha": "abc123", "content": "base64"}'),
+            Mock(returncode=0, stdout='"Q0lTIEJlbmNobWFya3M="'),  # "CIS Benchmarks" in base64
+        ]
+
+        standardizer = LicenseStandardizer(dry_run=True, skip_templates=["cis"])
+        result = standardizer.process_repo("aws-foundations-cis-baseline")
+
+        assert result["status"] == "skipped"
+        assert result["action"] == "skip_cis"
+
+    def test_creates_license_for_repo_without_one(self, mock_gh_api):
+        """Test that LICENSE.md is created for repos without license."""
+        # Mock metadata and no license file
+        mock_gh_api.side_effect = [
+            Mock(returncode=0, stdout='{"fork": false, "archived": false, "default_branch": "main"}'),
+            Mock(returncode=1),  # LICENSE.md doesn't exist
+            Mock(returncode=1),  # LICENSE doesn't exist
+        ]
+
+        standardizer = LicenseStandardizer(dry_run=True)
+        result = standardizer.process_repo("nginx-stigready-baseline")
+
+        assert result["status"] == "success"
+        assert result["action"] == "created"
+        assert result["template"] == "plain"
+        assert standardizer.stats["created"] == 1
+
+    def test_renames_license_to_license_md(self, mock_gh_api):
+        """Test that LICENSE is renamed to LICENSE.md."""
+        # Mock: metadata, no LICENSE.md, has LICENSE, get content
+        import base64
+        content = base64.b64encode(b"Licensed under Apache 2.0").decode()
+
+        mock_gh_api.side_effect = [
+            Mock(returncode=0, stdout='{"fork": false, "archived": false, "default_branch": "main"}'),
+            Mock(returncode=1),  # No LICENSE.md
+            Mock(returncode=0, stdout=f'{{"sha": "abc123", "content": "{content}"}}'),  # Has LICENSE
+            Mock(returncode=0, stdout=f'"{content}"'),  # Get content
+        ]
+
+        standardizer = LicenseStandardizer(dry_run=True)
+        result = standardizer.process_repo("saf")
+
+        assert result["status"] == "success"
+        assert result["action"] == "renamed"
+        assert standardizer.stats["renamed"] == 1
+
+    def test_updates_existing_license_md(self, mock_gh_api):
+        """Test that existing LICENSE.md is updated with cleaned format."""
+        import base64
+        content = base64.b64encode(b"Licensed under Apache 2.0").decode()
+
+        mock_gh_api.side_effect = [
+            Mock(returncode=0, stdout='{"fork": false, "archived": false, "default_branch": "main"}'),
+            Mock(returncode=0, stdout=f'{{"sha": "abc123", "content": "{content}"}}'),  # Has LICENSE.md
+            Mock(returncode=0, stdout=f'"{content}"'),  # Get content
+        ]
+
+        standardizer = LicenseStandardizer(dry_run=True)
+        result = standardizer.process_repo("heimdall2")
+
+        assert result["status"] == "success"
+        assert result["action"] == "updated"
+        assert standardizer.stats["updated"] == 1
+
+
+class TestEdgeCases:
+    """Test edge cases and error handling."""
+
+    def test_handles_api_errors_gracefully(self, mock_gh_api):
+        """Test that API errors are caught and reported."""
+        mock_gh_api.side_effect = Exception("API rate limit exceeded")
+
+        standardizer = LicenseStandardizer(dry_run=True)
+        result = standardizer.process_repo("test-repo")
+
+        assert result["status"] == "failed"
+        assert "API rate limit" in result["error"]
+        assert standardizer.stats["failed"] == 1
+
+    def test_dry_run_creates_plan_file(self, tmp_path, monkeypatch):
+        """Test that dry-run mode creates plan file."""
+        monkeypatch.chdir(tmp_path)
+
+        standardizer = LicenseStandardizer(dry_run=True)
+        standardizer.dry_run_plan = [
+            "saf: renamed (plain)",
+            "heimdall2: updated (plain)",
+        ]
+        standardizer.save_dry_run_plan()
+
+        plan_file = tmp_path / "dry_run_plan.txt"
+        assert plan_file.exists()
+        content = plan_file.read_text()
+        assert "saf: renamed (plain)" in content
+        assert "heimdall2: updated (plain)" in content
+        assert "Total actions: 2" in content
+
+    def test_statistics_tracking(self):
+        """Test that statistics are tracked correctly."""
+        standardizer = LicenseStandardizer(dry_run=True)
+
+        assert standardizer.stats["total"] == 0
+        assert standardizer.stats["updated"] == 0
+        assert standardizer.stats["created"] == 0
+        assert standardizer.stats["renamed"] == 0
+        assert standardizer.stats["skipped"] == 0
+        assert standardizer.stats["failed"] == 0
+        assert standardizer.stats["forks"] == 0
+        assert standardizer.stats["archived"] == 0
