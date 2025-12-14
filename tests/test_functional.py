@@ -159,18 +159,21 @@ class TestEdgeCases:
         monkeypatch.chdir(tmp_path)
 
         standardizer = LicenseStandardizer(dry_run=True)
-        standardizer.dry_run_plan = [
-            "saf: renamed (plain)",
-            "heimdall2: updated (plain)",
+        standardizer.results = [
+            {"repo": "saf", "status": "success", "action": "renamed", "template": "plain", "error": None},
+            {"repo": "heimdall2", "status": "success", "action": "updated", "template": "plain", "error": None},
         ]
-        standardizer.save_dry_run_plan()
+        standardizer.stats["total"] = 2
+        standardizer.stats["renamed"] = 1
+        standardizer.stats["updated"] = 1
+        standardizer.save_dry_run_plan(format="txt")
 
         plan_file = tmp_path / "dry_run_plan.txt"
         assert plan_file.exists()
         content = plan_file.read_text()
-        assert "saf: renamed (plain)" in content
-        assert "heimdall2: updated (plain)" in content
-        assert "Total actions: 2" in content
+        assert "RENAMED" in content or "renamed" in content
+        assert "saf" in content
+        assert "heimdall2" in content
 
     def test_statistics_tracking(self):
         """Test that statistics are tracked correctly."""

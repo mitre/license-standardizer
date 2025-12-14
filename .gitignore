@@ -41,4 +41,6 @@ htmlcov/
 
 # Project specific
 dry_run_plan.txt
+dry_run_plan.json
+dry_run_plan.csv
 temp_license.md

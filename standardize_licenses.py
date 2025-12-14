@@ -23,15 +23,30 @@ import json
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+try:
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+    HAS_JINJA2 = True
+except ImportError:
+    HAS_JINJA2 = False
 
 # Template paths
 SCRIPT_DIR = Path(__file__).parent
 TEMPLATES_DIR = SCRIPT_DIR / "templates"
+JINJA_TEMPLATE = TEMPLATES_DIR / "LICENSE.j2"
 TEMPLATE_CIS = TEMPLATES_DIR / "LICENSE_TEMPLATE_CIS.md"
 TEMPLATE_DISA = TEMPLATES_DIR / "LICENSE_TEMPLATE_DISA.md"
 TEMPLATE_PLAIN = TEMPLATES_DIR / "LICENSE_TEMPLATE_PLAIN.md"
+
+# Template variables
+TEMPLATE_VARS = {
+    "year": datetime.now().year,
+    "case_number": "18-3678",
+    "organization": "The MITRE Corporation",
+}
 
 
 class LicenseStandardizer:
@@ -56,12 +71,25 @@ class LicenseStandardizer:
         self.results = []
         self.dry_run_plan = []  # Store dry-run actions
 
-        # Load templates
-        self.templates = {
-            "cis": TEMPLATE_CIS.read_text(),
-            "disa": TEMPLATE_DISA.read_text(),
-            "plain": TEMPLATE_PLAIN.read_text(),
-        }
+        # Load templates (prefer Jinja2 if available)
+        if HAS_JINJA2 and JINJA_TEMPLATE.exists():
+            env = Environment(
+                loader=FileSystemLoader(TEMPLATES_DIR),
+                autoescape=select_autoescape()
+            )
+            jinja_template = env.get_template("LICENSE.j2")
+            self.templates = {
+                "cis": jinja_template.render(template_type="cis", **TEMPLATE_VARS),
+                "disa": jinja_template.render(template_type="disa", **TEMPLATE_VARS),
+                "plain": jinja_template.render(template_type="plain", **TEMPLATE_VARS),
+            }
+        else:
+            # Fallback to static templates
+            self.templates = {
+                "cis": TEMPLATE_CIS.read_text(),
+                "disa": TEMPLATE_DISA.read_text(),
+                "plain": TEMPLATE_PLAIN.read_text(),
+            }
 
     def get_saf_repos(self) -> List[str]:
         """Get list of all SAF team repos via gh cli."""
@@ -414,21 +442,66 @@ class LicenseStandardizer:
         else:
             print(f"✅ All {self.stats['verified']} repos have LICENSE.md")
 
-    def save_dry_run_plan(self):
-        """Save dry-run plan to file for review."""
-        if not self.dry_run or not self.dry_run_plan:
+    def save_dry_run_plan(self, format="txt"):
+        """Save dry-run plan to file for review.
+
+        Args:
+            format: Output format ('txt', 'json', 'csv')
+        """
+        if not self.dry_run or not self.results:
             return
 
-        plan_file = Path("dry_run_plan.txt")
-        with open(plan_file, "w") as f:
-            f.write("DRY RUN PLAN - Review before executing\n")
-            f.write("=" * 70 + "\n\n")
-            for item in self.dry_run_plan:
-                f.write(f"{item}\n")
-            f.write("\n" + "=" * 70 + "\n")
-            f.write(f"Total actions: {len(self.dry_run_plan)}\n")
+        # Text format
+        if format == "txt":
+            plan_file = Path("dry_run_plan.txt")
+            with open(plan_file, "w") as f:
+                f.write("DRY RUN PLAN - Review before executing\n")
+                f.write("=" * 70 + "\n\n")
 
-        print(f"\n📝 Dry-run plan saved to: {plan_file}")
+                # Group by action type
+                by_action = {}
+                for r in self.results:
+                    if r["status"] == "success":
+                        action = r["action"]
+                        if action not in by_action:
+                            by_action[action] = []
+                        by_action[action].append(f"{r['repo']} ({r['template']})")
+
+                for action, repos in by_action.items():
+                    f.write(f"\n{action.upper()}:\n")
+                    for repo in repos:
+                        f.write(f"  - {repo}\n")
+
+                f.write("\n" + "=" * 70 + "\n")
+                f.write(f"Total repos:      {self.stats['total']}\n")
+                f.write(f"Will update:      {self.stats['updated']}\n")
+                f.write(f"Will create:      {self.stats['created']}\n")
+                f.write(f"Will rename:      {self.stats['renamed']}\n")
+                f.write(f"Will skip:        {self.stats['skipped']}\n")
+
+            print(f"\n📝 Dry-run plan saved to: {plan_file}")
+
+        # JSON format
+        elif format == "json":
+            import json as json_lib
+            plan_file = Path("dry_run_plan.json")
+            output = {
+                "summary": self.stats,
+                "results": self.results,
+            }
+            with open(plan_file, "w") as f:
+                json_lib.dump(output, f, indent=2)
+            print(f"\n📝 Dry-run plan saved to: {plan_file}")
+
+        # CSV format
+        elif format == "csv":
+            import csv
+            plan_file = Path("dry_run_plan.csv")
+            with open(plan_file, "w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=["repo", "status", "action", "template", "error"])
+                writer.writeheader()
+                writer.writerows(self.results)
+            print(f"\n📝 Dry-run plan saved to: {plan_file}")
 
     def print_summary(self):
         """Print summary of operations."""
@@ -502,9 +575,9 @@ class LicenseStandardizer:
             if i < len(repos) and not self.dry_run:
                 time.sleep(self.delay)
 
-        # Save dry-run plan
+        # Save dry-run plan (will be set from args in main())
         if self.dry_run:
-            self.save_dry_run_plan()
+            self.save_dry_run_plan(format=getattr(self, 'output_format', 'txt'))
 
         # Print summary
         self.print_summary()
@@ -564,6 +637,12 @@ def main():
         default=0.5,
         help="Delay between repos in seconds (default: 0.5)",
     )
+    parser.add_argument(
+        "--output-format",
+        choices=["txt", "json", "csv"],
+        default="txt",
+        help="Dry-run output format (default: txt)",
+    )
 
     args = parser.parse_args()
 
@@ -580,6 +659,7 @@ def main():
         skip_archived=args.skip_archived,
         delay=args.delay
     )
+    standardizer.output_format = args.output_format  # For dry-run reporting
 
     # Single repo test mode
     if args.repo:

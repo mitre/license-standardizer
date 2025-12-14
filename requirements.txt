@@ -1,2 +1,2 @@
-# No runtime dependencies - uses gh CLI and stdlib only
-# All dependencies are handled by subprocess calls to gh
+# Runtime dependencies
+jinja2>=3.0.0  # Template engine for LICENSE generation
