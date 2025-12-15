@@ -18,16 +18,16 @@ repositories.
 
 ```bash
 # Test on single repo (dry-run)
-python3 standardize_licenses.py --repo saf --dry-run
+uv run python standardize_licenses.py --repo saf --dry-run
 
 # Process all SAF repos, skip CIS baselines (already done)
-python3 standardize_licenses.py --skip cis
+uv run python standardize_licenses.py --skip cis
 
 # Process only STIG baselines
-python3 standardize_licenses.py --pattern '*-stig-baseline'
+uv run python standardize_licenses.py --pattern '*-stig-baseline'
 
 # Resume after failure
-python3 standardize_licenses.py --resume-from nginx-baseline
+uv run python standardize_licenses.py --resume-from nginx-baseline
 ```
 
 ## Usage
@@ -155,16 +155,46 @@ Verified:         148
 
 ## Requirements
 
-- Python 3.7+
+- Python 3.8+
+- uv (https://docs.astral.sh/uv/)
 - GitHub CLI (`gh`) authenticated
 - Access to MITRE org and SAF team
 
 ## Installation
 
 ```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and setup
 git clone https://github.com/mitre/license-standardizer
 cd license-standardizer
-python3 standardize_licenses.py --help
+
+# Install dependencies (creates .venv and installs packages)
+uv sync --dev
+
+# Run the tool
+uv run python standardize_licenses.py --help
+```
+
+## Development
+
+```bash
+# Run tests
+uv run pytest tests/ -v
+
+# Run linting
+uv run black --check .
+uv run ruff check .
+
+# Run security scan
+uv run bandit -r standardize_licenses.py -ll
+
+# Add new dependency
+uv add <package>
+
+# Add dev dependency
+uv add --dev <package>
 ```
 
 ## Contributing
