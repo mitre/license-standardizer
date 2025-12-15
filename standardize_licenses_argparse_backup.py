@@ -18,6 +18,7 @@ Usage:
     python3 standardize_mitre_licenses.py --skip-archived --resume-from nginx-baseline
 """
 
+import argparse
 import json
 import subprocess
 import sys
@@ -26,25 +27,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import typer
-from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
-from typing_extensions import Annotated
-
 try:
     from jinja2 import Environment, FileSystemLoader, select_autoescape
 
     HAS_JINJA2 = True
 except ImportError:
     HAS_JINJA2 = False
-
-# Rich console for output
-console = Console()
-app = typer.Typer(
-    name="license-standardizer",
-    help="Standardize LICENSE files across MITRE SAF repositories",
-    add_completion=False,
-)
 
 # Template paths
 SCRIPT_DIR = Path(__file__).parent
@@ -644,75 +632,110 @@ class LicenseStandardizer:
         return 0 if self.stats["failed"] == 0 else 1
 
 
-@app.command()
-def standardize(
-    repo: Annotated[Optional[str], typer.Option(help="Process single repo (test mode)")] = None,
-    pattern: Annotated[Optional[str], typer.Option(help="Glob pattern (e.g., '*-stig-baseline')")] = None,
-    skip: Annotated[Optional[List[str]], typer.Option(help="Skip template types")] = None,
-    skip_archived: Annotated[bool, typer.Option(help="Skip archived repositories")] = False,
-    resume_from: Annotated[Optional[str], typer.Option(help="Resume from specific repo")] = None,
-    delay: Annotated[float, typer.Option(help="Delay between repos (seconds)")] = 0.5,
-    dry_run: Annotated[bool, typer.Option(help="Preview changes without applying")] = False,
-    verify_only: Annotated[bool, typer.Option(help="Only verify LICENSE.md exists")] = False,
-    repo_filter: Annotated[Optional[str], typer.Option(help="Filter repos by substring")] = None,
-    output_format: Annotated[str, typer.Option(help="Dry-run output format")] = "txt",
-    output: Annotated[Optional[str], typer.Option("-o", help="Custom output filename")] = None,
-):
-    """Standardize LICENSE files in MITRE SAF repositories."""
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(description="Standardize LICENSE files in MITRE SAF repos")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be done without making changes",
+    )
+    parser.add_argument(
+        "--skip",
+        action="append",
+        choices=["cis", "disa", "plain"],
+        help="Skip repos with specific template types (can specify multiple times)",
+    )
+    parser.add_argument(
+        "--verify-only",
+        action="store_true",
+        help="Only verify LICENSE.md exists, don't update",
+    )
+    parser.add_argument(
+        "--repo-filter",
+        help="Filter repos by name substring",
+    )
+    parser.add_argument(
+        "--repo",
+        help="Process single repo only (test mode)",
+    )
+    parser.add_argument(
+        "--pattern",
+        help="Process repos matching glob pattern (e.g., 'stig-*', '*-baseline')",
+    )
+    parser.add_argument(
+        "--skip-archived",
+        action="store_true",
+        help="Skip archived repositories",
+    )
+    parser.add_argument(
+        "--resume-from",
+        help="Resume from specific repo (if script failed mid-run)",
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=0.5,
+        help="Delay between repos in seconds (default: 0.5)",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=["txt", "json", "csv"],
+        default="txt",
+        help="Dry-run output format (default: txt)",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="Output file for dry-run plan (default: dry_run_plan.{format})",
+    )
+
+    args = parser.parse_args()
+
     # Verify Jinja2 templates exist
     required_templates = ["base.j2", "cis.j2", "disa.j2", "plain.j2"]
     for tmpl in required_templates:
         if not (TEMPLATES_DIR / tmpl).exists():
-            console.print(f"[red]❌ Template not found: {TEMPLATES_DIR / tmpl}[/red]")
-            raise typer.Exit(1)
-
-    # Validate output format
-    if output_format not in ["txt", "json", "csv"]:
-        console.print(f"[red]❌ Invalid output format: {output_format}[/red]")
-        raise typer.Exit(1)
+            print(f"❌ Template not found: {TEMPLATES_DIR / tmpl}")
+            return 1
 
     # Run standardization
     standardizer = LicenseStandardizer(
-        dry_run=dry_run or verify_only,
-        skip_templates=skip or [],
-        skip_archived=skip_archived,
-        delay=delay,
+        dry_run=args.dry_run or args.verify_only,
+        skip_templates=args.skip or [],
+        skip_archived=args.skip_archived,
+        delay=args.delay,
     )
-    standardizer.output_format = output_format
-    standardizer.output_file = output
+    standardizer.output_format = args.output_format  # For dry-run reporting
+    standardizer.output_file = args.output  # For custom output filename
 
     # Single repo test mode
-    if repo:
-        console.print(f"[cyan]Test mode: Processing single repo '{repo}'[/cyan]\n")
-        result = standardizer.process_repo(repo)
+    if args.repo:
+        print(f"Test mode: Processing single repo '{args.repo}'\n")
+        result = standardizer.process_repo(args.repo)
         standardizer.results.append(result)
         standardizer.stats["total"] = 1
         standardizer.print_summary()
-        if not dry_run:
-            standardizer.verify_all([repo])
-        raise typer.Exit(0 if result["status"] == "success" else 1)
+        if not args.dry_run:
+            standardizer.verify_all([args.repo])
+        return 0 if result["status"] == "success" else 1
 
-    if verify_only:
+    if args.verify_only:
         repos = standardizer.get_saf_repos()
-        if repo_filter:
-            repos = [r for r in repos if repo_filter.lower() in r.lower()]
-        if pattern:
+        if args.repo_filter:
+            repos = [r for r in repos if args.repo_filter.lower() in r.lower()]
+        if args.pattern:
             import fnmatch
-            repos = [r for r in repos if fnmatch.fnmatch(r, pattern)]
+
+            repos = [r for r in repos if fnmatch.fnmatch(r, args.pattern)]
         standardizer.stats["total"] = len(repos)
         standardizer.verify_all(repos)
-        raise typer.Exit(0)
+        return 0
 
-    exit_code = standardizer.run(
-        repo_filter=repo_filter, pattern=pattern, resume_from=resume_from
+    return standardizer.run(
+        repo_filter=args.repo_filter, pattern=args.pattern, resume_from=args.resume_from
     )
-    raise typer.Exit(exit_code)
-
-
-def main():
-    """Entry point for script execution."""
-    app()
 
 
 if __name__ == "__main__":
-    app()
+    sys.exit(main())

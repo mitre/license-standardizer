@@ -15,6 +15,9 @@ license = {text = "Apache-2.0"}
 keywords = ["license", "mitre", "automation", "github"]
 dependencies = [
     "jinja2>=3.0.0",
+    "questionary>=1.10.0",
+    "rich>=13.8.1",
+    "typer>=0.19.1",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
