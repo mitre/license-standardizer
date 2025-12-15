@@ -673,10 +673,11 @@ def standardize(
     output_format: Annotated[str, typer.Option(help="Dry-run output format")] = "txt",
     output: Annotated[Optional[str], typer.Option("-o", help="Custom output filename")] = None,
     interactive: Annotated[bool, typer.Option("--interactive", "-i", help="Interactive mode with prompts")] = False,
+    no_interactive: Annotated[bool, typer.Option("--no-interactive", help="Disable interactive prompts (for CI)")] = False,
 ):
     """Standardize LICENSE files in MITRE SAF repositories."""
-    # Interactive mode
-    if interactive:
+    # Interactive mode (only if not explicitly disabled)
+    if interactive and not no_interactive:
         console.print(Panel("[bold cyan]MITRE License Standardizer - Interactive Mode[/bold cyan]"))
 
         # Ask what to do
