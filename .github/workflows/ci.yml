@@ -20,26 +20,23 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          version: "latest"
-
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: uv sync --dev
 
-      - name: Run tests with pytest
+      - name: Run tests
         run: uv run pytest tests/ -v --cov=. --cov-report=term --cov-report=xml
 
-      - name: Upload coverage to Codecov
+      - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.xml
           flags: unittests
-          name: codecov-umbrella
 
   lint:
-    name: Lint and Format Check
+    name: Lint and Format
     runs-on: ubuntu-latest
 
     steps:
@@ -47,17 +44,16 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
-
-      - name: Set up Python
-        run: uv python install 3.12
+        with:
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --dev
 
-      - name: Check formatting with Black
+      - name: Check formatting
         run: uv run black --check --diff .
 
-      - name: Lint with Ruff
+      - name: Lint
         run: uv run ruff check .
 
   security:
@@ -69,15 +65,13 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
-      - name: Set up Python
-        run: uv python install 3.12
+      - name: Install dependencies and bandit
+        run: |
+          uv sync
+          uv pip install bandit[toml]
 
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Install bandit
-        run: uv pip install --system bandit[toml]
-
-      - name: Run Bandit security scan
+      - name: Run Bandit
         run: uv run bandit -r standardize_licenses.py -ll
