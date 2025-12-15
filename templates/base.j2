@@ -1,6 +1,6 @@
 # License
 
-Copyright © {{ year }} The MITRE Corporation.
+Copyright © {{ year }} {{ organization }}.
 
 Approved for Public Release; Distribution Unlimited. Case Number {{ case_number }}.
 
@@ -28,25 +28,27 @@ met:
   copyright/digital rights legend, this list of conditions and the
   following Notice in the documentation and/or other materials provided
   with the distribution.
-- Neither the name of The MITRE Corporation nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
+- Neither the name of {{ organization }} nor the names of its contributors
+  may be used to endorse or promote products derived from this software
+  without specific prior written permission.
 {% block third_party_before_notice %}{% endblock %}
 
+{% block notice %}
 ## Notice
 
-MITRE grants permission to reproduce, distribute, modify, and otherwise
-use this software to the extent permitted by the licensed terms provided
-in the LICENSE file included with this project.
+{{ organization }} grants permission to reproduce, distribute, modify, and
+otherwise use this software to the extent permitted by the licensed terms
+provided in the LICENSE file included with this project.
 
-This software was produced by The MITRE Corporation for the U.S.
-Government under contract. As such the U.S. Government has certain use
-and data rights in this software. No use other than those granted to the
-U.S. Government, or to those acting on behalf of the U.S. Government,
-under these contract arrangements is authorized without the express
-written permission of The MITRE Corporation.
+This software was produced by {{ organization }} for the U.S. Government
+under contract. As such the U.S. Government has certain use and data
+rights in this software. No use other than those granted to the U.S.
+Government, or to those acting on behalf of the U.S. Government, under
+these contract arrangements is authorized without the express written
+permission of {{ organization }}.
 
-For further information, please contact The MITRE Corporation, Contracts
-Management Office, 7515 Colshire Drive, McLean, VA 22102-7539, (703)
-983-6000.
+For further information, please contact {{ organization }},
+{{ org_office }}, {{ org_address }},
+{{ org_phone }}.
+{% endblock %}
 {% block third_party_after_notice %}{% endblock %}

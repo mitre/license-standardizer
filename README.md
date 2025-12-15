@@ -1,6 +1,9 @@
-# MITRE Repo Minder
+# Repo Minder
 
-Repository file standardization and compliance tool for MITRE open-source projects.
+Repository file standardization and compliance tool for GitHub organizations.
+
+Developed by MITRE for managing 240+ Security Automation Framework repositories,
+but designed to work with any GitHub organization and team.
 
 ## Features
 
@@ -19,20 +22,21 @@ Repository file standardization and compliance tool for MITRE open-source projec
 # Install the tool
 pip install mitre-repo-minder
 
+# Configure for your organization
+export REPO_MINDER_ORGANIZATION=your-org
+export REPO_MINDER_TEAM=your-team
+
 # Or use with uv (development)
 uv sync
-uv run python repo_minder.py --repo saf --dry-run
+uv run python repo_minder.py --org your-org --team your-team --repo test-repo --dry-run
 
 # Test on single repo (dry-run)
-repo-minder --repo saf --dry-run
+repo-minder --repo test-repo --dry-run
 
-# Process all SAF repos, skip CIS baselines
-repo-minder --skip cis
+# Process repos matching pattern
+repo-minder --pattern '*-baseline' --skip cis
 
-# Process only STIG baselines
-repo-minder --pattern '*-stig-baseline'
-
-# Interactive mode
+# Interactive mode (prompts for all options)
 repo-minder --interactive
 ```
 
@@ -43,10 +47,10 @@ Repo Minder uses **Pydantic Settings** for type-safe configuration with multiple
 ### Configuration Priority
 
 Settings are loaded in this order (highest priority first):
-1. **CLI flags** (`--org mitre`, `--team saf`)
-2. **Environment variables** (`REPO_MINDER_ORGANIZATION=mitre`)
+1. **CLI flags** (`--org your-org`, `--team your-team`)
+2. **Environment variables** (`REPO_MINDER_ORGANIZATION=your-org`)
 3. **.env file** (see `.env.example`)
-4. **Built-in defaults**
+4. **Built-in defaults** (mitre/saf)
 
 ### Environment Variables
 
@@ -54,8 +58,8 @@ Copy `.env.example` to `.env` and customize:
 
 ```bash
 # GitHub Settings
-REPO_MINDER_ORGANIZATION=mitre      # GitHub org
-REPO_MINDER_TEAM=saf                # Team name
+REPO_MINDER_ORGANIZATION=your-org   # GitHub org (e.g., mitre, ansible-lockdown)
+REPO_MINDER_TEAM=your-team          # Team name (e.g., saf, developers)
 
 # Performance
 REPO_MINDER_DELAY=0.5               # API rate limit delay (0.0-5.0 seconds)
@@ -65,10 +69,13 @@ REPO_MINDER_MAX_WORKERS=20          # Parallel workers (1-50)
 REPO_MINDER_BACKUP_DIR=backups      # Backup location
 REPO_MINDER_TEMPLATES_DIR=templates # Template location
 
-# Template Variables
-REPO_MINDER_CASE_NUMBER=18-3678                      # MITRE case number
-REPO_MINDER_COPYRIGHT_ORG=The MITRE Corporation      # Copyright holder
+# Template Variables (customize for your organization)
+REPO_MINDER_CASE_NUMBER=18-3678                      # Release case number
+REPO_MINDER_COPYRIGHT_ORG=Your Organization          # Copyright holder
 REPO_MINDER_COPYRIGHT_YEAR=2025                      # Copyright year
+REPO_MINDER_ORG_OFFICE=Legal Department               # Contact office/dept
+REPO_MINDER_ORG_ADDRESS=123 Main St, City, ST 12345  # Mailing address
+REPO_MINDER_ORG_PHONE=(555) 123-4567                 # Phone number
 
 # Behavior
 REPO_MINDER_SKIP_ARCHIVED=false     # Skip archived repos
@@ -89,8 +96,10 @@ repo-minder --org ansible-lockdown --team developers --verify-only
 # Adjust performance
 repo-minder --delay 1.0 --pattern '*baseline'
 
-# Custom case number for different MITRE releases
-REPO_MINDER_CASE_NUMBER=20-1234 repo-minder --repo saf
+# Custom copyright settings for your organization
+REPO_MINDER_CASE_NUMBER=20-1234 \
+REPO_MINDER_COPYRIGHT_ORG="Your Company Name" \
+repo-minder --repo test-repo
 ```
 
 ### Validation
@@ -192,7 +201,7 @@ uv run python standardize_licenses.py --resume-from nginx-baseline
 
 ### Step 1: Get Repository List
 ```bash
-gh api orgs/mitre/teams/saf/repos --paginate
+gh api orgs/{organization}/teams/{team}/repos --paginate
 ```
 
 ### Step 2: For Each Repo

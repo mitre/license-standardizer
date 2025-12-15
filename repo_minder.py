@@ -95,6 +95,17 @@ class Settings(BaseSettings):
         default_factory=lambda: datetime.now().year,
         description="Copyright year (defaults to current year)",
     )
+    org_office: str = Field(
+        default="Contracts Management Office",
+        description="Organization office/department name for LICENSE notices",
+    )
+    org_address: str = Field(
+        default="7515 Colshire Drive, McLean, VA 22102-7539",
+        description="Organization mailing address for LICENSE notices",
+    )
+    org_phone: str = Field(
+        default="(703) 983-6000", description="Organization phone number for LICENSE notices"
+    )
 
     # Behavior Defaults
     skip_archived: bool = Field(default=False, description="Default: skip archived repositories")
@@ -152,6 +163,9 @@ TEMPLATE_VARS = {
     "year": settings.copyright_year,
     "case_number": settings.case_number,
     "organization": settings.copyright_org,
+    "org_office": settings.org_office,
+    "org_address": settings.org_address,
+    "org_phone": settings.org_phone,
 }
 
 
