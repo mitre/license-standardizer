@@ -33,18 +33,20 @@ uv run python standardize_licenses.py --resume-from nginx-baseline
 ## Usage
 
 ```
-python3 standardize_licenses.py [OPTIONS]
+uv run python standardize_licenses.py [OPTIONS]
 
 Options:
-  --repo REPO              Process single repo (test mode)
-  --pattern PATTERN        Process repos matching glob pattern
-  --skip {cis,disa,plain}  Skip specific template types (repeatable)
-  --skip-archived          Skip archived repositories
-  --resume-from REPO       Resume from specific repo
-  --delay SECONDS          Delay between repos (default: 0.5)
-  --dry-run                Preview changes without applying
-  --verify-only            Only verify LICENSE.md exists
-  --repo-filter TEXT       Filter repos by substring
+  --repo REPO                  Process single repo (test mode)
+  --pattern PATTERN            Process repos matching glob pattern
+  --skip {cis,disa,plain}      Skip specific template types (repeatable)
+  --skip-archived              Skip archived repositories
+  --resume-from REPO           Resume from specific repo
+  --delay SECONDS              Delay between repos (default: 0.5)
+  --dry-run                    Preview changes without applying
+  --verify-only                Only verify LICENSE.md exists
+  --repo-filter TEXT           Filter repos by substring
+  --output-format {txt,json,csv}  Dry-run output format (default: txt)
+  -o, --output FILE            Custom output filename for dry-run plan
 ```
 
 ## License Templates
@@ -66,8 +68,8 @@ Used for DISA STIG and SRG baseline repositories.
 
 **Third-party section:**
 ```
-DISA STIGs. Please visit https://public.cyber.mil/stigs/ for full terms
-of use.
+DISA STIGs. Please visit https://cyber.mil/stigs/downloads for full
+terms of use.
 ```
 
 ### Plain Template
@@ -96,24 +98,24 @@ license template:
 
 ### Update all SAF repos (skip CIS baselines already updated)
 ```bash
-python3 standardize_licenses.py --skip cis
+uv run python standardize_licenses.py --skip cis
 ```
 
 ### Process only STIG baselines with verification
 ```bash
-python3 standardize_licenses.py --pattern '*-stig-baseline' --dry-run
-# Review dry_run_plan.txt
-python3 standardize_licenses.py --pattern '*-stig-baseline'
+uv run python standardize_licenses.py --pattern '*-stig-baseline' --dry-run --output-format json
+# Review dry_run_plan.json
+uv run python standardize_licenses.py --pattern '*-stig-baseline'
 ```
 
 ### Fix a specific repo
 ```bash
-python3 standardize_licenses.py --repo heimdall2
+uv run python standardize_licenses.py --repo heimdall2
 ```
 
 ### Resume after network failure
 ```bash
-python3 standardize_licenses.py --resume-from nginx-baseline
+uv run python standardize_licenses.py --resume-from nginx-baseline
 ```
 
 ## How It Works
@@ -212,10 +214,17 @@ Approved for Public Release; Distribution Unlimited. Case Number 18-3678.
 
 ## Authors
 
-- Aaron Lippold <lippold@gmail.com>
+- MITRE SAF Team <saf@mitre.org>
 
 ## Acknowledgments
 
 Developed to maintain consistency across MITRE's open-source security
 automation tools including SAF CLI, Heimdall, Vulcan, and 240+ InSpec
 compliance baselines.
+
+## Technology
+
+- **uv**: Modern Python package manager (10-100x faster than pip)
+- **Jinja2**: Template engine with inheritance (base + child templates)
+- **GitHub CLI**: API access for repository operations
+- **pytest**: 43 comprehensive tests (unit + functional + integration)
