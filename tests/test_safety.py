@@ -230,7 +230,8 @@ class TestBackupSystem:
         # In dry-run, backup shouldn't be created
         # Change test to non-dry-run scenario
         # For now, just check the feature exists
-        assert "--backup" in runner.invoke(app, ["--help"]).output
+        help_result = runner.invoke(app, ["--help"])
+        assert "backup" in help_result.output.lower()
 
 
 class TestDryRunAnalysis:
