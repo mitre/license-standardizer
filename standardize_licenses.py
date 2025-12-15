@@ -674,8 +674,16 @@ def standardize(
     output: Annotated[Optional[str], typer.Option("-o", help="Custom output filename")] = None,
     interactive: Annotated[bool, typer.Option("--interactive", "-i", help="Interactive mode with prompts")] = False,
     no_interactive: Annotated[bool, typer.Option("--no-interactive", help="Disable interactive prompts (for CI)")] = False,
+    force: Annotated[bool, typer.Option("--force", help="Skip confirmation prompts")] = False,
+    backup: Annotated[bool, typer.Option("--backup", help="Backup original LICENSE files before update")] = True,
 ):
     """Standardize LICENSE files in MITRE SAF repositories."""
+    # Layer 1: Command Validation - Must specify target
+    if not (repo or pattern or repo_filter or verify_only or interactive):
+        console.print("[red]❌ No target specified![/red]")
+        console.print("Use one of: --repo, --pattern, --repo-filter, --verify-only, or --interactive")
+        console.print("Run with --help for usage information")
+        raise typer.Exit(1)
     # Interactive mode (only if not explicitly disabled)
     if interactive and not no_interactive:
         console.print(Panel("[bold cyan]MITRE License Standardizer - Interactive Mode[/bold cyan]"))
