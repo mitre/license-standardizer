@@ -37,7 +37,7 @@ class TestInteractiveMode:
 
         from standardize_licenses import app
 
-        runner = CliRunner()
+        runner = CliRunner(env={"NO_COLOR": "1"})
         result = runner.invoke(app, ["--interactive"])
 
         # Should complete without hanging

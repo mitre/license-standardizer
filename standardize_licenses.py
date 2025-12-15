@@ -793,8 +793,15 @@ def standardize(
     backup: Annotated[
         bool, typer.Option("--backup", help="Backup original LICENSE files before update")
     ] = True,
+    no_color: Annotated[bool, typer.Option("--no-color", help="Disable colored output")] = False,
 ):
     """Standardize LICENSE files in MITRE SAF repositories."""
+    # Set NO_COLOR if requested
+    if no_color:
+        import os
+
+        os.environ["NO_COLOR"] = "1"
+
     # Layer 1: Command Validation - Must specify target
     if not (repo or pattern or repo_filter or verify_only or interactive):
         console.print("[red]❌ No target specified![/red]")
