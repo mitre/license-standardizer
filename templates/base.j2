@@ -31,9 +31,10 @@ met:
 - Neither the name of {{ organization }} nor the names of its contributors
   may be used to endorse or promote products derived from this software
   without specific prior written permission.
-{% block third_party_before_notice %}{% endblock %}
+{% block third_party_before_notice -%}
+{% endblock %}
 
-{% block notice %}
+{% block notice -%}
 ## Notice
 
 {{ organization }} grants permission to reproduce, distribute, modify, and
@@ -57,5 +58,6 @@ by standard quality and assurance testing.
 For further information, please contact {{ organization }},
 {{ org_office }}, {{ org_address }},
 {{ org_phone }}.
-{% endblock %}
-{% block third_party_after_notice %}{% endblock %}
+{% endblock -%}
+{% block third_party_after_notice -%}
+{% endblock -%}
