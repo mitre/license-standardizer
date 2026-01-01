@@ -51,3 +51,8 @@ backups/
 
 # Environment configuration
 .env
+
+# Claude Code internal files (per CLAUDE.md policy)
+.claude/
+CLAUDE.md
+SESSION*.md
